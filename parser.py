@@ -54,7 +54,7 @@ def parse_content_description_to_etree(doc):
     tocs = (styles['toc 1'], styles['toc 2'], styles['toc 3'],)
 
 
-    root = ET.Element('data')
+    root = ET.Element('content_description')
     last_first_level = None
     last_second_level = None
 
@@ -70,22 +70,91 @@ def parse_content_description_to_etree(doc):
 
             if s_name == styles['toc 1']:
                 node = ET.SubElement(root, 'sec')
-                node.set('name', ' '.join(para.text.split()[:-1]))
+                name = ' '.join(para.text.split()[:-1])
+                if name[0].isdigit():
+                    name = ' '.join(name.split()[1:])
+                node.set('name', name)
 
                 last_first_level = node
 
             if s_name == styles['toc 2']:
-                node = ET.SubElement(last_first_level, 'subsec')
-                node.set('name', ' '.join(para.text.split()[:-1]))
+                node = ET.SubElement(last_first_level, 'subsec1')
+                name = ' '.join(para.text.split()[:-1])
+                if name[0].isdigit():
+                    name = ' '.join(name.split()[1:])
+                node.set('name', name)
 
                 last_second_level = node
 
             if s_name == styles['toc 3']:
-                node = ET.SubElement(last_second_level, 'subsec')
-                node.set('name', ' '.join(para.text.split()[:-1]))
+                node = ET.SubElement(last_second_level, 'subsec2')
+                name = ' '.join(para.text.split()[:-1])
+                if name[0].isdigit():
+                    name = ' '.join(name.split()[1:])
+                node.set('name', name)
 
         if para.style.name == styles['content_description']:
             in_content_description = True
+    return root
+
+
+def parse_em_all(doc):
+    root = parse_content_description_to_etree(doc)
+    prev = root
+
+    tocs = (styles['toc 1'], styles['toc 2'], styles['toc 3'],)
+
+    levels = {
+        'sec': 1,
+        'subsec1': 2,
+        'subsec2': 3,
+    }
+
+    doc_index = 0
+
+    for elem in root.iter():
+        if elem == root:
+            continue
+
+        if prev == root or levels[prev.tag] < levels[elem.tag]:
+            prev = elem
+            continue
+
+        print(elem.get('name'))
+        doc_index = 0
+
+        while doc_index < len(doc.paragraphs):
+            if prev.get('name') in doc.paragraphs[doc_index].text and doc.paragraphs[doc_index].style.name not in tocs:
+                s_name = doc.paragraphs[doc_index].style.name
+                doc_index += 1
+                for i in range(doc_index, len(doc.paragraphs)):
+                    para = doc.paragraphs[i]
+
+                    if para.style.name == s_name:
+                        doc_index = i
+                        break
+
+                    node = ET.SubElement(prev, 'p')
+                    node.text = para.text
+                break
+            doc_index += 1
+        prev = elem
+    doc_index = 0
+    while doc_index < len(doc.paragraphs):
+        if prev.get('name') in doc.paragraphs[doc_index].text and doc.paragraphs[doc_index].style.name not in tocs:
+            s_name = doc.paragraphs[doc_index].style.name
+            doc_index += 1
+            for i in range(doc_index, len(doc.paragraphs)):
+                para = doc.paragraphs[i]
+
+                if para.style.name == s_name:
+                    doc_index = i
+                    break
+
+                node = ET.SubElement(prev, 'p')
+                node.text = para.text
+            break
+        doc_index += 1
     return root
 
 
@@ -100,10 +169,11 @@ styles = {
     'toc 1': 'toc 1',
     'toc 2': 'toc 2',
     'toc 3': 'toc 3',  # Перечисления в содержании (индексация длины 1, 2 и 3 соответственно)
+    'subsec v': 'Нумерованный заголовок 3'
 }
 
 doc = docx.Document("input.docx")
-root = parse_content_description_to_etree(doc)
+root = parse_em_all(doc)
 
 et = ET.ElementTree(root)
 et.write('output.xml', encoding="utf-8", pretty_print=True)
