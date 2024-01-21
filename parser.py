@@ -158,12 +158,6 @@ def parse_em_all(doc):
     return root
 
 
-def print_tree(root):
-    print(root.name)
-    for ch in root.children:
-        print_tree(ch)
-
-
 styles = {
     'content_description': 'Название-caps',  # Содержание
     'toc 1': 'toc 1',
