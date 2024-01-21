@@ -171,3 +171,7 @@ root = parse_em_all(doc)
 
 et = ET.ElementTree(root)
 et.write('output.xml', encoding="utf-8", pretty_print=True)
+
+root = parse_content_description_to_etree(doc)
+et = ET.ElementTree(root)
+et.write('output2.xml', encoding="utf-8", pretty_print=True)
