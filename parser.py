@@ -125,53 +125,133 @@ def parse_em_all(doc):
 
         while doc_index < len(doc.paragraphs):
             if prev.get('name') in doc.paragraphs[doc_index].text and doc.paragraphs[doc_index].style.name not in tocs:
+                in_iter = False
                 s_name = doc.paragraphs[doc_index].style.name
+                iter_start = prev
+                iter1_start = prev
+                numpstart = prev
                 doc_index += 1
                 for i in range(doc_index, len(doc.paragraphs)):
                     para = doc.paragraphs[i]
-
+                    print(para.style.name)
                     if para.style.name == s_name:
                         doc_index = i
                         break
 
-                    node = ET.SubElement(prev, 'p')
+                    if para.style.name == styles['nump 2']:
+                        node = ET.SubElement(prev, 'nump2')
+                        node.text = para.text
+                        numpstart = node
+                        continue
+                    elif para.style.name == styles['nump 3']:
+                        node = ET.SubElement(prev, 'nump3')
+                        node.text = para.text
+                        numpstart = node
+                        continue
+                    else:
+                        numpstart = prev
+
+                    if para.style.name == styles['iter 1']:
+                        if not in_iter:
+                            in_iter = True
+                            iter_start = ET.SubElement(prev, 'iter')
+                        node = ET.SubElement(iter_start, 'i1')
+                        node.text = para.text
+                        iter1_start = node
+                        continue
+
+                    if para.style.name == styles['iter 2']:
+                        node = ET.SubElement(iter1_start, 'i2')
+                        node.text = para.text
+                        continue
+
+                    if para.style.name == styles['iter alt']:
+                        if not in_iter:
+                            in_iter = True
+                            iter_start = ET.SubElement(prev, 'iter alt')
+                        if iter_start.tag == 'iter alt':
+                            node = ET.SubElement(iter_start, 'i1')
+                        else:
+                            node = ET.SubElement(iter1_start, 'i2')
+                        node.text = para.text
+                        continue
+
+                    in_iter = False
+
+                    if para.style.name == styles['normal']:
+                        node = ET.SubElement(numpstart, 'n')
+                        node.text = para.text
+                        continue
+
+                    if styles['extra'] in para.style.name:
+                        node = ET.SubElement(prev, 'extra')
+                        node.text = para.text
+                        numpstart = node
+
+                    node = ET.SubElement(prev, para.style.name[:3])
                     node.text = para.text
                 break
             doc_index += 1
         prev = elem
-    doc_index = 0
-    while doc_index < len(doc.paragraphs):
-        if prev.get('name') in doc.paragraphs[doc_index].text and doc.paragraphs[doc_index].style.name not in tocs:
-            s_name = doc.paragraphs[doc_index].style.name
-            doc_index += 1
-            for i in range(doc_index, len(doc.paragraphs)):
-                para = doc.paragraphs[i]
-
-                if para.style.name == s_name:
-                    doc_index = i
-                    break
-
-                node = ET.SubElement(prev, 'p')
-                node.text = para.text
-            break
-        doc_index += 1
+    # doc_index = 0
+    # while doc_index < len(doc.paragraphs):
+    #     if prev.get('name') in doc.paragraphs[doc_index].text and doc.paragraphs[doc_index].style.name not in tocs:
+    #         s_name = doc.paragraphs[doc_index].style.name
+    #         doc_index += 1
+    #         for i in range(doc_index, len(doc.paragraphs)):
+    #             para = doc.paragraphs[i]
+    #             print(para.style.name)
+    #
+    #             if para.style.name == s_name:
+    #                 doc_index = i
+    #                 break
+    #             if para.style.name == styles['iter 1']:
+    #                 node = ET.SubElement(prev, 'i1')
+    #                 node.text = para.text
+    #                 iter_start = node
+    #
+    #             elif para.style.name == styles['iter 1 alt']:
+    #                 node = ET.SubElement(prev, 'i1alt')
+    #                 node.text = para.text
+    #                 iter_start = node
+    #
+    #             elif para.style.name == styles['iter 2']:
+    #                 node = ET.SubElement(iter_start, 'i2')
+    #                 node.text = para.text
+    #
+    #             else:
+    #                 node = ET.SubElement(prev, 'p')
+    #                 node.text = para.text
+    #         break
+    #     doc_index += 1
     return root
-
 
 styles = {
     'content_description': 'Название-caps',  # Содержание
     'toc 1': 'toc 1',
     'toc 2': 'toc 2',
     'toc 3': 'toc 3',  # Перечисления в содержании (индексация длины 1, 2 и 3 соответственно)
-    'subsec v': 'Нумерованный заголовок 3'
+    'subsec v': 'Нумерованный заголовок 3',
+    'iter 1': "Перечисление-1",
+    'iter 2': "Перечисление 2 уровень",
+    'iter alt': "Перечень",
+    'nump 2': "Нумерованный абзац 2",
+    'nump 3': "Нумерованный абзац 3",
+    'normal': "Normal",
+    'extra': "Приложение",
 }
 
+
+def run_parser(doc):
+    root = parse_em_all(doc)
+
+    et = ET.ElementTree(root)
+    et.write('output.xml', encoding="utf-8", pretty_print=True)
+
+    root = parse_content_description_to_etree(doc)
+    et = ET.ElementTree(root)
+    et.write('output2.xml', encoding="utf-8", pretty_print=True)
+
+
 doc = docx.Document("input.docx")
-root = parse_em_all(doc)
-
-et = ET.ElementTree(root)
-et.write('output.xml', encoding="utf-8", pretty_print=True)
-
-root = parse_content_description_to_etree(doc)
-et = ET.ElementTree(root)
-et.write('output2.xml', encoding="utf-8", pretty_print=True)
+run_parser(doc)
